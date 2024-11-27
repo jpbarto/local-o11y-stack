@@ -9,3 +9,7 @@ This repository contains a Docker Compose file to run a full, single, deployment
 To run the stack in your local dev environment execute `docker compose up`. In addition to the Grafana stack it will also launch an OpenTelemetry collector which can be used to send logs, metrics, and traces to the stack.
 
 The OpenTelemetry collector is listening on the standard ports for telemetry.
+
+## Notes for development
+
+Consider what can be used from microbs.io for demo code / Docker configuration
