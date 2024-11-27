@@ -10,6 +10,9 @@ To run the stack in your local dev environment execute `docker compose up`. In a
 
 The OpenTelemetry collector is listening on the standard ports for telemetry.
 
+## Testing the stack
+There is sample code to produce telemetry in the form of a NodeJS HTTP server app. To execute this app run `npm run with-telemetry` and then `curl http:/0.0.0.0:8080` on the web server. This will generate traces and metrics which can be reviewed in Grafana.
+
 ## Notes for development
 
 Consider what can be used from microbs.io for demo code / Docker configuration
