@@ -17,10 +17,6 @@ receivers:
           static_configs:
             - targets: ['0.0.0.0:8888']
 
-processors:
-  batch:
-    timeout: 100ms
-
 exporters:
   debug:
     verbosity: detailed
@@ -47,6 +43,7 @@ exporters:
 
 processors:
   batch:
+    timeout: 100ms
   transform:
     error_mode: ignore
     trace_statements:
@@ -57,9 +54,6 @@ processors:
 
 connectors:
   spanmetrics:
-
-extensions:
-  health_check: {}
 
 service:
   pipelines:

@@ -17,7 +17,7 @@ services:
     user: "472"
     depends_on:
       - prometheus
-      - otel-collector
+      - otelcol
     environment:
       - GF_SERVER_HTTP_PORT=${GRAFANA_SERVICE_PORT}
       - GF_AUTH_ANONYMOUS_ENABLED=true
@@ -31,14 +31,16 @@ services:
       - "${GRAFANA_SERVICE_PORT}:${GRAFANA_SERVICE_PORT}"
     logging: *logging
 
-  otel-collector:
+  otelcol:
     image: ${COLLECTOR_CONTRIB_IMAGE}
-    container_name: otel-col
+    container_name: otelcol
     command:
       - "--config"
       - "/otel-local-config.yaml"
     volumes:
-      - ${OTEL_COLLECTOR_CONFIG}:/otel-local-config.yaml
+      - type: bind
+        source: "${OTEL_COLLECTOR_CONFIG}"
+        target: /otel-local-config.yaml
     ports:
       - "${OTEL_COLLECTOR_PORT_GRPC}:${OTEL_COLLECTOR_PORT_GRPC}"
       - "${OTEL_COLLECTOR_PORT_HTTP}:${OTEL_COLLECTOR_PORT_HTTP}"
