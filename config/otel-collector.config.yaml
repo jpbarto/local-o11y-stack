@@ -2,11 +2,20 @@ receivers:
   otlp:
     protocols:
       grpc:
+        endpoint: ${env:OTEL_COLLECTOR_HOST}:${env:OTEL_COLLECTOR_PORT_GRPC}
       http:
+        endpoint: ${env:OTEL_COLLECTOR_HOST}:${env:OTEL_COLLECTOR_PORT_HTTP}
         cors:
           allowed_origins:
             - "http://*"
             - "https://*"
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'otelcol'
+          scrape_interval: 10s
+          static_configs:
+            - targets: ['0.0.0.0:8888']
 
 processors:
   batch:
@@ -16,25 +25,53 @@ exporters:
   debug:
     verbosity: detailed
 
-  otlp/tempo:
-    endpoint: tempo:4317
+  otlp:
+    endpoint: "jaeger:4317"
     tls:
       insecure: true
 
-  prometheus:
-    endpoint: 0.0.0.0:8889
+  otlphttp/prometheus:
+    endpoint: "http://prometheus:9090/api/v1/otlp"
+    tls:
+      insecure: true
+
+  opensearch:
+    logs_index: otel
+    http:
+      endpoint: "http://opensearch:9200"
+      tls:
+        insecure: true
+
+#  prometheus:
+#    endpoint: 0.0.0.0:8889
+
+processors:
+  batch:
+  transform:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - replace_pattern(name, "\\?.*", "")
+          - replace_match(name, "GET /api/products/*", "GET /api/products/{productId}")
+
+connectors:
+  spanmetrics:
 
 extensions:
   health_check: {}
 
 service:
   pipelines:
-    metrics:
-      receivers: [otlp]
-      processors: [batch]
-      exporters: [debug, prometheus]
-
     traces:
       receivers: [otlp]
+      processors: [transform, batch]
+      exporters: [debug, otlp, spanmetrics]
+    metrics:
+      receivers: [otlp, prometheus, spanmetrics]
       processors: [batch]
-      exporters: [debug, otlp/tempo]
+      exporters: [debug, otlphttp/prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [opensearch, debug]

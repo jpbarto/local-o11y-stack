@@ -1,17 +1,25 @@
-version: "3.7"
+x-default-logging: &logging
+  driver: "json-file"
+  options:
+    max-size: "5m"
+    max-file: "2"
+    tag: "{{.Name}}"
+
+networks:
+  default:
+    name: local-o11y-stack
+    driver: bridge
 
 services:
   grafana:
-    image: grafana/grafana:10.2.3
+    image: ${GRAFANA_IMAGE}
+    container_name: grafana
     user: "472"
     depends_on:
       - prometheus
-      - tempo
       - otel-collector
-    ports:
-      - 33000:33000
     environment:
-      - GF_SERVER_HTTP_PORT=33000
+      - GF_SERVER_HTTP_PORT=${GRAFANA_SERVICE_PORT}
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
       - GF_AUTH_DISABLE_LOGIN_FORM=true
@@ -19,33 +27,87 @@ services:
       - type: bind
         source: ./config/grafana.datasource.yaml
         target: /etc/grafana/provisioning/datasources/datasources.yaml
+    ports:
+      - "${GRAFANA_SERVICE_PORT}:${GRAFANA_SERVICE_PORT}"
+    logging: *logging
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.92.0
+    image: ${COLLECTOR_CONTRIB_IMAGE}
+    container_name: otel-col
     command:
       - "--config"
       - "/otel-local-config.yaml"
     volumes:
-      - ./config/otel-collector.config.yaml:/otel-local-config.yaml
+      - ${OTEL_COLLECTOR_CONFIG}:/otel-local-config.yaml
     ports:
-      - 4317:4317
-      - 4318:4318
+      - "${OTEL_COLLECTOR_PORT_GRPC}:${OTEL_COLLECTOR_PORT_GRPC}"
+      - "${OTEL_COLLECTOR_PORT_HTTP}:${OTEL_COLLECTOR_PORT_HTTP}"
+    depends_on:
+      jaeger:
+        condition: service_started
+      opensearch:
+        condition: service_healthy
+    logging: *logging
+    environment:
+      - OTEL_COLLECTOR_HOST
+      - OTEL_COLLECTOR_PORT_GRPC
+      - OTEL_COLLECTOR_PORT_HTTP
 
-  tempo:
-    image: grafana/tempo:2.3.1
-    command: ["-config.file=/etc/tempo.yaml"]
-    volumes:
-      - type: bind
-        source: ./config/tempo.config.yaml
-        target: /etc/tempo.yaml
+  jaeger:
+    image: ${JAEGERTRACING_IMAGE}
+    container_name: jaeger
+    command:
+      - "--memory.max-traces=5000"
+      - "--prometheus.server-url=http://${PROMETHEUS_ADDR}"
+      - "--prometheus.query.normalize-calls=true"
+      - "--prometheus.query.normalize-duration=true"
+    ports:
+      - "${JAEGER_SERVICE_PORT}"    # Jaeger UI
+      - "${OTEL_COLLECTOR_PORT_GRPC}"
+    environment:
+      - METRICS_STORAGE_TYPE=prometheus
+    logging: *logging
 
   prometheus:
-    image: prom/prometheus:v2.49.1
+    image: ${PROMETHEUS_IMAGE}
+    container_name: prometheus
     command:
       - --config.file=/etc/prometheus.yaml
       - --web.enable-remote-write-receiver
       - --enable-feature=exemplar-storage
+      - --enable-feature=otlp-write-receiver
     volumes:
       - type: bind
         source: ./config/prometheus.config.yaml
         target: /etc/prometheus.yaml
+    ports:
+      - "${PROMETHEUS_SERVICE_PORT}:${PROMETHEUS_SERVICE_PORT}"
+    logging: *logging
+
+  opensearch:
+    image: ${OPENSEARCH_IMAGE}
+    container_name: opensearch
+    environment:
+      - cluster.name=local-cluster
+      - node.name=local-node
+      - bootstrap.memory_lock=true
+      - discovery.type=single-node
+      - OPENSEARCH_JAVA_OPTS=-Xms300m -Xmx300m
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+      - DISABLE_SECURITY_PLUGIN=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - "9200"
+    healthcheck:
+      test: curl -s http://localhost:9200/_cluster/health | grep -E '"status":"(green|yellow)"'
+      start_period: 10s
+      interval: 5s
+      timeout: 10s
+      retries: 10
+    logging: *logging
