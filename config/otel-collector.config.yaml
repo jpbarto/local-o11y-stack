@@ -21,7 +21,7 @@ exporters:
   debug:
     verbosity: detailed
 
-  otlp:
+  otlp/jaeger:
     endpoint: "jaeger:4317"
     tls:
       insecure: true
@@ -60,7 +60,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [transform, batch]
-      exporters: [debug, otlp, spanmetrics]
+      exporters: [debug, otlp/jaeger, spanmetrics]
     metrics:
       receivers: [otlp, prometheus, spanmetrics]
       processors: [batch]

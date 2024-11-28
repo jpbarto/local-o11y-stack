@@ -25,7 +25,7 @@ datasources:
   - name: Jaeger
     uid: jaeger-traces
     type: jaeger
-    url: http://jaeger:16686/jaeger/ui
+    url: http://jaeger:16686
     editable: true
     isDefault: false
 
