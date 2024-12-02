@@ -8,9 +8,10 @@ This repository contains a Docker Compose file to run a full, single, deployment
 
 ## Using the stack
 
-To run the stack in your local dev environment execute `docker compose up`. In addition to the Grafana stack it will also launch an OpenTelemetry collector which can be used to send logs, metrics, and traces to the stack.
+To run the stack in your local dev environment execute `docker compose up --force-recreate --remove-orphans`. In addition to the Grafana stack it will also launch an OpenTelemetry collector which can be used to send logs, metrics, and traces to the stack.
 
 To access Grafana connect to http://0.0.0.0:3000
+To access Jaeger connect to http://0.0.0.0:16686
 
 The OpenTelemetry collector is listening on the standard ports for telemetry.
 
