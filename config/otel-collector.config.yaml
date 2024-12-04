@@ -31,15 +31,10 @@ exporters:
     tls:
       insecure: true
 
-  opensearch:
-    logs_index: otel
-    http:
-      endpoint: "http://opensearch:9200"
-      tls:
-        insecure: true
-
-#  prometheus:
-#    endpoint: 0.0.0.0:8889
+  otlphttp/loki:
+    endpoint: "http://loki:3100/otlp"
+    tls:
+      insecure: true
 
 processors:
   batch:
@@ -68,4 +63,4 @@ service:
     logs:
       receivers: [otlp]
       processors: [batch]
-      exporters: [opensearch, debug]
+      exporters: [debug, otlphttp/loki]

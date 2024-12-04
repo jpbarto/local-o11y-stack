@@ -48,8 +48,8 @@ services:
     depends_on:
       jaeger:
         condition: service_started
-      opensearch:
-        condition: service_healthy
+      loki:
+        condition: service_started
     logging: *logging
     environment:
       - OTEL_COLLECTOR_HOST
@@ -87,30 +87,13 @@ services:
       - "${PROMETHEUS_SERVICE_PORT}:${PROMETHEUS_SERVICE_PORT}"
     logging: *logging
 
-  opensearch:
-    image: ${OPENSEARCH_IMAGE}
-    container_name: opensearch
-    environment:
-      - cluster.name=local-cluster
-      - node.name=local-node
-      - bootstrap.memory_lock=true
-      - discovery.type=single-node
-      - OPENSEARCH_JAVA_OPTS=-Xms300m -Xmx300m
-      - DISABLE_INSTALL_DEMO_CONFIG=true
-      - DISABLE_SECURITY_PLUGIN=true
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-      nofile:
-        soft: 65536
-        hard: 65536
+  loki:
+    image: ${LOKI_IMAGE}
+    container_name: loki
+    volumes:
+      - type: bind
+        source: ./config/loki.config.yaml
+        target: /etc/loki/local-config.yaml
     ports:
-      - "9200"
-    healthcheck:
-      test: curl -s http://localhost:9200/_cluster/health | grep -E '"status":"(green|yellow)"'
-      start_period: 10s
-      interval: 5s
-      timeout: 10s
-      retries: 10
-    logging: *logging
+      - 3100
+
